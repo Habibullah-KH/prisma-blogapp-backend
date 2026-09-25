@@ -24,6 +24,28 @@ const createPost = async (req: Request, res: Response) => {
   }
 };
 
+
+const getAllPost = async(req: Request, res: Response)=>{
+  try{
+
+    const search = req.query
+
+    console.log("search value", search);
+
+    const result = await PostService.getAllPost({search})
+    res.status(200).json({
+      success: true,
+      data: result
+    })
+  } catch (error: any) {
+    res.status(404).json({
+      success: false,
+      message: error.message,
+      details: error,
+    });
+  }
+}
 export const PostControler = {
   createPost,
+  getAllPost
 };
