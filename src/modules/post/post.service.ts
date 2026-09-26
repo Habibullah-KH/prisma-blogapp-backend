@@ -31,29 +31,27 @@ const getAllPost = async ({
   const andCondition: PostWhereInput[] = [];
 
   if (search) {
-    andCondition.push(
-      search && {
-        OR: [
-          {
-            title: {
-              contains: search as string,
-              mode: "insensitive",
-            },
+    andCondition.push({
+      OR: [
+        {
+          title: {
+            contains: search,
+            mode: "insensitive",
           },
-          {
-            content: {
-              contains: search as string,
-              mode: "insensitive",
-            },
+        },
+        {
+          content: {
+            contains: search,
+            mode: "insensitive",
           },
-          {
-            tags: {
-              has: search as string,
-            },
+        },
+        {
+          tags: {
+            has: search,
           },
-        ],
-      },
-    );
+        },
+      ],
+    });
   }
 
   if (tags.length > 0) {
