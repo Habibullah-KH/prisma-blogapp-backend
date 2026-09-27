@@ -20,13 +20,23 @@ const getAllPost = async ({
   tags,
   isFeatured,
   status,
-  authorId
+  authorId,
+  page,
+  limit,
+  skip,
+  sortBy,
+  sortOrder,
 }: {
   search: string | undefined;
   tags: string[] | [];
   isFeatured: boolean | undefined;
   status: PostStatus | undefined;
-  authorId: string | undefined
+  authorId: string | undefined;
+  page: number;
+  limit: number;
+  skip: number;
+  sortBy: string;
+  sortOrder: string;
 }) => {
   const andCondition: PostWhereInput[] = [];
 
@@ -62,30 +72,80 @@ const getAllPost = async ({
     });
   }
 
-  if(typeof isFeatured === "boolean"){
+  if (typeof isFeatured === "boolean") {
     andCondition.push({
-        isFeatured
-    })
+      isFeatured,
+    });
   }
 
-  if(status){
-    andCondition.push({status})
+  if (status) {
+    andCondition.push({ status });
   }
 
-  if(authorId){
-    andCondition.push({authorId})
+  if (authorId) {
+    andCondition.push({ authorId });
   }
-
 
   const result = await prisma.post.findMany({
+    take: limit,
+    skip: skip,
+    where: {
+      AND: andCondition,
+    },
+    orderBy: {
+      [sortBy]: sortOrder,
+    },
+  });
+
+  const total = await prisma.post.count({
     where: {
       AND: andCondition,
     },
   });
-  return result;
+  return {
+    data: result,
+    pagination: {
+      total,
+      page,
+      limit,
+      totalPage: Math.ceil(total / limit),
+    },
+  };
+};
+
+const getPostById = async (postId: string) => {
+  return await prisma.$transaction(async (tx) => {
+    await tx.post.update({
+      where: {
+        id: postId,
+      },
+      data: {
+        views: {
+          increment: 1,
+        },
+      },
+    });
+    const postData = await tx.post.findUnique({
+      where: {
+        id: postId,
+      },
+    });
+
+    return postData
+  });
 };
 
 export const PostService = {
   createPost,
   getAllPost,
+  getPostById,
 };
+
+// orderBy:
+//       sortBy && sortOrder
+//         ? {
+//             [sortBy]: sortOrder,
+//           }
+//         : {
+//             createdAt: "desc"
+//           }
