@@ -3,6 +3,7 @@ import { toNodeHandler } from "better-auth/node";
 import { postRouter } from "./modules/post/post.router";
 import { auth } from "./lib/auth";
 import cors from "cors";
+import { commentRouter } from "./modules/comment/comment.router";
 
 const app: Application = express();
 
@@ -16,6 +17,7 @@ app.use(cors({
 app.use(express.json());
 
 app.use("/posts", postRouter)
+app.use("/comment", commentRouter)
 
 app.get("/", (_req, res) => {
   res.status(200).send("Server is running");
