@@ -221,59 +221,116 @@ const getMyPost = async (authorId: string) => {
   };
 };
 
-const updatePost = async(postId: string, data: Partial<Post>, authorId: string, isAdmin: boolean) => {
+const updatePost = async (
+  postId: string,
+  data: Partial<Post>,
+  authorId: string,
+  isAdmin: boolean,
+) => {
   const postData = await prisma.post.findUniqueOrThrow({
     where: {
-      id: postId
+      id: postId,
     },
     select: {
       id: true,
-      authorId: true
-    }
-  })
+      authorId: true,
+    },
+  });
 
-  if(!isAdmin && (postData.authorId !== authorId)){
-    throw new Error("You are not authorised")
+  if (!isAdmin && postData.authorId !== authorId) {
+    throw new Error("You are not authorised");
   }
 
-  if(!isAdmin){
-    delete data.isFeatured
+  if (!isAdmin) {
+    delete data.isFeatured;
   }
 
   const result = await prisma.post.update({
     where: {
-      id: postData.id
+      id: postData.id,
     },
-    data
-  })
+    data,
+  });
   return result;
-}
+};
 
 // 1. user only cah delete own post
-// 2. admin can delete everyone post 
+// 2. admin can delete everyone post
 
-const deltePost = async(postId: string, authorId: string, isAdmin: boolean)=>{
+const deltePost = async (
+  postId: string,
+  authorId: string,
+  isAdmin: boolean,
+) => {
   const postData = await prisma.post.findUniqueOrThrow({
     where: {
-      id: postId
+      id: postId,
     },
     select: {
       id: true,
-      authorId: true
-    }
-  })
+      authorId: true,
+    },
+  });
 
-    if(!isAdmin && (postData.authorId !== authorId)){
-    throw new Error("You are not authorised")
+  if (!isAdmin && postData.authorId !== authorId) {
+    throw new Error("You are not authorised");
   }
 
   return await prisma.post.delete({
     where: {
-      id: postId
-    }
-  })
+      id: postId,
+    },
+  });
+};
 
-}
+const getStatistics = async () => {
+  // postCount, published post, draft post, total comments, total views
+
+  return await prisma.$transaction(async (tx) => {
+    const [
+      totalPosts,
+      publishedPost,
+      draftPosts,
+      archivedPosts,
+      totalComments,
+      approvedComments,
+      rejectsComments,
+      totalUser,
+      adminCount,
+      userCount,
+      totalViews
+    ] = await Promise.all([
+      await tx.post.count(),
+      await tx.post.count({ where: { status: PostStatus.PUBLISHED } }),
+      await tx.post.count({ where: { status: PostStatus.DRAFT } }),
+      await tx.post.count({ where: { status: PostStatus.ARCHIVED } }),
+      await tx.comment.count(),
+      await tx.comment.count({ where: { status: CommentStatus.APPROVED } }),
+      await tx.comment.count({ where: { status: CommentStatus.REJECT } }),
+      await tx.user.count(),
+      await tx.user.count({ where: {role: "ADMIN"}}),
+      await tx.user.count({ where: {role: "USER"}}),
+      await tx.post.aggregate({
+        _sum: {views: true}
+      })
+      
+    ]);
+
+    return {
+      totalPosts,
+      publishedPost,
+      draftPosts,
+      archivedPosts,
+      totalComments,
+      approvedComments,
+      rejectsComments,
+      totalUser,
+      adminCount,
+      userCount,
+      totalViews: totalViews._sum.views
+    };
+  });
+};
 
 export const PostService = {
   createPost,
@@ -281,7 +338,8 @@ export const PostService = {
   getPostById,
   getMyPost,
   updatePost,
-  deltePost
+  deltePost,
+  getStatistics,
 };
 
 // orderBy:

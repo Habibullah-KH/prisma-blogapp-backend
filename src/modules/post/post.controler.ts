@@ -190,11 +190,30 @@ const deltePost = async (req: Request, res: Response) => {
   }
 };
 
+const getStatistics = async (req: Request, res: Response) => {
+  try {
+
+    const result = await PostService.getStatistics();
+    res.status(201).json({
+      success: true,
+      message: "statistics get successfully !!",
+      data: result,
+    });
+  } catch (error: any) {
+    res.status(404).json({
+      success: false,
+      message: error.message,
+      details: error,
+    });
+  }
+};
+
 export const PostControler = {
   createPost,
   getAllPost,
   getPostById,
   getMyPost,
   updatePost,
-  deltePost
+  deltePost,
+  getStatistics
 };
