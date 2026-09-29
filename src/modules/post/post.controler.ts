@@ -3,6 +3,7 @@ import { Request, Response } from "express";
 import { PostService } from "./post.service";
 import { PostStatus } from "../../../generated/prisma/enums";
 import paginationSortingHelper from "../../helper/paginationSortingHelper";
+import { UserRole } from "../../middleWares/auth";
 
 const createPost = async (req: Request, res: Response) => {
   try {
@@ -108,8 +109,92 @@ const getPostById = async (req: Request, res: Response) => {
     });
   }
 };
+
+const getMyPost = async (req: Request, res: Response) => {
+  try {
+
+    const user = req.user;
+    if(!user){
+      throw new Error("you are unauthorized !!")
+    }
+    console.log(user);
+    const result = await PostService.getMyPost(user?.id as string);
+    res.status(201).json({
+      success: true,
+      message: "Data get successfully !!",
+      data: result,
+    });
+  } catch (error: any) {
+    res.status(404).json({
+      success: false,
+      message: error.message,
+      details: error,
+    });
+  }
+};
+
+// 1. user can only update own post but can't update isFeatured
+//2. Admin can update everyone post
+
+const updatePost = async (req: Request, res: Response) => {
+  try {
+
+    const user = req.user;
+    if(!user){
+      throw new Error("you are unauthorized !!")
+    }
+
+    const {postId} = req.params;
+
+    const isAdmin = user.role === UserRole.ADMIN
+    console.log(user);
+    const result = await PostService.updatePost(postId as string, req.body, user?.id as string, isAdmin);
+    res.status(201).json({
+      success: true,
+      message: "Data get successfully !!",
+      data: result,
+    });
+  } catch (error: any) {
+    res.status(404).json({
+      success: false,
+      message: error.message,
+      details: error,
+    });
+  }
+};
+
+const deltePost = async (req: Request, res: Response) => {
+  try {
+
+    const user = req.user;
+    if(!user){
+      throw new Error("you are unauthorized !!")
+    }
+
+    const {postId} = req.params;
+
+    const isAdmin = user.role === UserRole.ADMIN
+    console.log(user);
+    const result = await PostService.deltePost(postId as string, user?.id as string, isAdmin);
+    res.status(201).json({
+      success: true,
+      message: "Data get successfully !!",
+      data: result,
+    });
+  } catch (error: any) {
+    res.status(404).json({
+      success: false,
+      message: error.message,
+      details: error,
+    });
+  }
+};
+
 export const PostControler = {
   createPost,
   getAllPost,
-  getPostById
+  getPostById,
+  getMyPost,
+  updatePost,
+  deltePost
 };

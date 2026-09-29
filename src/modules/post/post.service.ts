@@ -1,4 +1,8 @@
-import { CommentStatus, Post, PostStatus } from "../../../generated/prisma/client";
+import {
+  CommentStatus,
+  Post,
+  PostStatus,
+} from "../../../generated/prisma/client";
 import { PostWhereInput } from "../../../generated/prisma/models";
 import { prisma } from "../../lib/prisma";
 
@@ -95,11 +99,11 @@ const getAllPost = async ({
     orderBy: {
       [sortBy]: sortOrder,
     },
-    include:{
+    include: {
       _count: {
-        select: {comments: true}
-      }
-    }
+        select: { comments: true },
+      },
+    },
   });
 
   const total = await prisma.post.count({
@@ -138,40 +142,146 @@ const getPostById = async (postId: string) => {
         comments: {
           where: {
             parentId: null,
-            status: CommentStatus.APPROVED
+            status: CommentStatus.APPROVED,
           },
-          orderBy: {createdAt: "desc"},
+          orderBy: { createdAt: "desc" },
           include: {
             replies: {
               where: {
-                status: CommentStatus.APPROVED
+                status: CommentStatus.APPROVED,
               },
-              orderBy: {createdAt: "asc"},
+              orderBy: { createdAt: "asc" },
               include: {
                 replies: {
                   where: {
-                    status: CommentStatus.APPROVED
+                    status: CommentStatus.APPROVED,
                   },
-                  orderBy: {createdAt: "asc"}
-                }
-              }
-            }
-          }
+                  orderBy: { createdAt: "asc" },
+                },
+              },
+            },
+          },
         },
         _count: {
-          select: {comments: true}
-        }
-      }
+          select: { comments: true },
+        },
+      },
     });
 
-    return postData
+    return postData;
   });
 };
+
+const getMyPost = async (authorId: string) => {
+  await prisma.user.findUniqueOrThrow({
+    where: {
+      id: authorId,
+      status: "ACTIVE",
+    },
+    select: {
+      id: true,
+    },
+  });
+
+  const result = await prisma.post.findMany({
+    where: {
+      authorId,
+    },
+    orderBy: {
+      createdAt: "desc",
+    },
+    include: {
+      _count: {
+        select: {
+          comments: true,
+        },
+      },
+    },
+  });
+
+  // 1. count using count
+  // const total = await prisma.post.count({
+  //   where: {
+  //     authorId
+  //   }
+  // })
+
+  //2. count using aggregate
+  const total = await prisma.post.aggregate({
+    _count: {
+      id: true,
+    },
+    where: {
+      authorId,
+    },
+  });
+  return {
+    data: result,
+    total,
+  };
+};
+
+const updatePost = async(postId: string, data: Partial<Post>, authorId: string, isAdmin: boolean) => {
+  const postData = await prisma.post.findUniqueOrThrow({
+    where: {
+      id: postId
+    },
+    select: {
+      id: true,
+      authorId: true
+    }
+  })
+
+  if(!isAdmin && (postData.authorId !== authorId)){
+    throw new Error("You are not authorised")
+  }
+
+  if(!isAdmin){
+    delete data.isFeatured
+  }
+
+  const result = await prisma.post.update({
+    where: {
+      id: postData.id
+    },
+    data
+  })
+  return result;
+}
+
+// 1. user only cah delete own post
+// 2. admin can delete everyone post 
+
+const deltePost = async(postId: string, authorId: string, isAdmin: boolean)=>{
+  const postData = await prisma.post.findUniqueOrThrow({
+    where: {
+      id: postId
+    },
+    select: {
+      id: true,
+      authorId: true
+    }
+  })
+
+    if(!isAdmin && (postData.authorId !== authorId)){
+    throw new Error("You are not authorised")
+  }
+
+  return await prisma.post.delete({
+    where: {
+      id: postId
+    }
+  })
+
+}
 
 export const PostService = {
   createPost,
   getAllPost,
   getPostById,
+  getMyPost,
+  updatePost,
+  deltePost
 };
 
 // orderBy:
